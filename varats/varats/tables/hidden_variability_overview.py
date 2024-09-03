@@ -1,6 +1,7 @@
 import typing as tp
 
 import pandas as pd
+from networkx import make_max_clique_graph
 
 from varats.data.reports.hidden_configurability_report import (
     HiddenConfigurabilityReport,
@@ -13,6 +14,7 @@ from varats.revision.revisions import get_processed_revisions_files
 from varats.table.table import Table
 from varats.table.table_utils import dataframe_to_table
 from varats.table.tables import TableGenerator, TableFormat
+from varats.ts_utils.cli_util import make_cli_option
 
 
 class HiddenVariabilityOverviewTable(Table, table_name="hidden_var_overview"):
@@ -38,6 +40,10 @@ class HiddenVariabilityOverviewTable(Table, table_name="hidden_var_overview"):
 
             report = HiddenConfigurabilityReport(reports[0].full_path())
 
+            if report.get_num_configurability_points(
+            ) == 0 and self.table_kwargs["hide_zero"]:
+                continue
+
             new_row = {
                 "Case Study": case_study.project_name,
                 "Total": report.get_num_configurability_points(),
@@ -51,11 +57,22 @@ class HiddenVariabilityOverviewTable(Table, table_name="hidden_var_overview"):
 
         df = pd.DataFrame(table_data)
 
+        df.sort_values(by="Case Study", inplace=True)
+
         return dataframe_to_table(df, table_format, wrap_table=wrap_table)
 
 
 class HiddenVariabilityOverviewTableGenerator(
-    TableGenerator, generator_name="hidden-var-overview", options=[]
+    TableGenerator,
+    generator_name="hidden-var-overview",
+    options=[
+        make_cli_option(
+            "--hide-zero",
+            is_flag=True,
+            default=False,
+            help="Hide projects with zero hidden configurability points."
+        )
+    ]
 ):
 
     def generate(self) -> tp.List[Table]:
