@@ -13,8 +13,6 @@ class HiddenConfigurabilityPoint:
     filename: str
     line: int
     column: int
-    var_type: str
-    var_name: str
 
 
 def from_dict(data: dict) -> HiddenConfigurabilityPoint:
@@ -23,8 +21,6 @@ def from_dict(data: dict) -> HiddenConfigurabilityPoint:
         filename=data["Filename"],
         line=data["Lineno"],
         column=data["Colno"],
-        var_type=data["Type"],
-        var_name=data["VarName"]
     )
 
 
@@ -50,10 +46,9 @@ class HiddenConfigurabilityReport(BaseReport, shorthand="HC", file_type="yaml"):
     def get_num_configurability_points_by_kind(self) -> dict:
         """Returns the number of hidden configurability points by kind."""
         type_count = {}
-        for hidden_var_kind in self.__hidden_configurability_points:
-            type_count[hidden_var_kind] = len(
-                self.__hidden_configurability_points[hidden_var_kind]
-            )
+        for hidden_var_kind, values in self.__hidden_configurability_points.items(
+        ):
+            type_count[hidden_var_kind] = len(values)
 
         return type_count
 
