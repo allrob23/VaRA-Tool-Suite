@@ -1,7 +1,6 @@
 import typing as tp
 
 import pandas as pd
-from networkx import make_max_clique_graph
 
 from varats.data.reports.hidden_configurability_report import (
     HiddenConfigurabilityReport,

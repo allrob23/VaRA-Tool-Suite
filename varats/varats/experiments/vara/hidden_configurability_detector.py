@@ -19,7 +19,9 @@ from varats.experiment.experiment_util import (
 )
 from varats.project.varats_project import VProject
 from varats.report.report import ReportSpecification
+from varats.revision.revisions import get_processed_revisions_files
 from varats.tools.research_tools.vara import VaRA
+from varats.utils.config import get_current_config_id
 from varats.utils.git_util import ChurnConfig
 
 
@@ -113,6 +115,73 @@ class HiddenConfigurabilityDetector(actions.ProjectStep):  #type: ignore
         return actions.StepResult.OK
 
 
+class FilterHiddenConfigurabilityPoints(actions.ProjectStep):  #type: ignore
+    """Filters hidden configurability points from the report."""
+
+    NAME = "FilterHiddenConfigurabilityPoints"
+
+    project: VProject
+
+    def __init__(self, project: VProject, experiment_handle: ExperimentHandle):
+        super().__init__(project=project)
+        self.__experiment_handle = experiment_handle
+
+    def __call__(self) -> actions.StepResult:
+        return self.filter()
+
+    def __str__(self, indent: int = 0) -> str:
+        return textwrap.indent(
+            f"* {self.project.name}: Filter Hidden Configuration Points",
+            " " * indent
+        )
+
+    def filter(self) -> actions.StepResult:
+        # Load the report
+        reports = get_processed_revisions_files(
+            self.project.name,
+            FindHiddenConfigurationPoints,
+            HiddenConfigurabilityReport,
+            config_id=get_current_config_id(self.project)
+        )
+
+        if not reports:
+            return actions.StepResult.ERROR
+
+        if len(reports) > 1:
+            print(f"More than one report for {self.project.name}")
+            return actions.StepResult.ERROR
+
+        report = HiddenConfigurabilityReport(reports[0].full_path())
+
+        # General Filtering:
+        # Ignore paths containing any of the following substrings:
+        # - "/usr/include" - System Headers
+        # - "test" - Test files
+        # ... (May be extended)
+
+        ignored_patterns = [
+            "/usr/include",
+            "test",
+            "examples",
+        ]
+
+        if self.project.name == "HyTeg":
+            ignored_patterns.append("eigen/")
+
+        ignored_patterns = re.compile(
+            "|".join(re.escape(pattern) for pattern in ignored_patterns)
+        )
+
+        report.__hidden_configurability_points = {
+            kind: [
+                point for point in points
+                if not ignored_patterns.search(point.filename)
+            ] for kind, points in report.__hidden_configurability_points.items()
+        }
+
+        return actions.StepResult.OK
+
+
 class FindHiddenConfigurationPoints(VersionExperiment, shorthand="HCP"):
     """Detects hidden configurability points in the project."""
 
@@ -149,7 +218,8 @@ class FindHiddenConfigurationPoints(VersionExperiment, shorthand="HCP"):
                 actions.Compile(project),
                 HiddenConfigurabilityDetector(project, self.get_handle()),
                 actions.Clean(project)
-            ])
+            ]),
+            FilterHiddenConfigurabilityPoints(project, self.get_handle())
         ]
 
         return experiment_steps
