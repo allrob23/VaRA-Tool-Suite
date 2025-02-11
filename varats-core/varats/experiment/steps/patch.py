@@ -16,18 +16,22 @@ class ApplyPatch(actions.ProjectStep):
     NAME = "APPLY_PATCH"
     DESCRIPTION = "Apply a Git patch to a project."
 
-    def __init__(self, project: VProject, patch: Patch) -> None:
+    def __init__(self, project: VProject, patch: Patch, **kwargs) -> None:
         super().__init__(project)
         self.__patch = patch
+        self.__arguments = kwargs
 
     def __call__(self) -> StepResult:
         self.status = StepResult.OK
+        print(
+            f"Applying {self.__patch.shortname} to "
+            f"{self.project.source_of_primary}"
+        )
+
+        patch_path = self.__patch.render(**self.__arguments)
+
         try:
-            print(
-                f"Applying {self.__patch.shortname} to "
-                f"{self.project.source_of_primary}"
-            )
-            apply_patch(Path(self.project.source_of_primary), self.__patch.path)
+            apply_patch(Path(self.project.source_of_primary), patch_path)
 
         except ProcessExecutionError:
             self.status = StepResult.ERROR
@@ -47,19 +51,23 @@ class RevertPatch(actions.ProjectStep):
     NAME = "REVERT_PATCH"
     DESCRIPTION = "Revert a Git patch from a project."
 
-    def __init__(self, project: VProject, patch: Patch) -> None:
+    def __init__(self, project: VProject, patch: Patch, **kwargs) -> None:
         super().__init__(project)
         self.__patch = patch
+        self.__arguments = kwargs
 
     def __call__(self) -> StepResult:
         self.status = StepResult.OK
+        print(
+            f"Reverting {self.__patch.shortname} on "
+            f"{self.project.source_of_primary}"
+        )
+
+        patch_path = self.__patch.render(**self.__arguments)
+
         try:
-            print(
-                f"Reverting {self.__patch.shortname} on "
-                f"{self.project.source_of_primary}"
-            )
             revert_patch(
-                Path(self.project.source_of_primary), self.__patch.path
+                Path(self.project.source_of_primary), patch_path
             )
 
         except ProcessExecutionError:
