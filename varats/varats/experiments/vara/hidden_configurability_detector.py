@@ -176,7 +176,7 @@ class FilterHiddenConfigurabilityPoints(actions.ProjectStep):  #type: ignore
             kind: [
                 point for point in points
                 if not ignored_patterns.search(point.filename)
-            ] for kind, points in report.__hidden_configurability_points.items()
+            ] for kind, points in report.get_hidden_configurability_points().items()
         }
 
         return actions.StepResult.OK
@@ -191,10 +191,6 @@ class FindHiddenConfigurationPoints(VersionExperiment, shorthand="HCP"):
     def actions_for_project(self, project: VProject) -> tp.List[actions.Step]:
         """Returns the specified steps to run the project(s) specified in the
         call in a fixed order."""
-        # For now, we only run the HiddenConfigurabilityDetector
-        # In a later improvement, one could compile the project once and use the
-        # generated compile_commands.json to run the HiddenConfigurabilityDetector
-        # only on the files that are actually compiled.
         # Add the required runtime extensions to the project(s).
         project.runtime_extension = bb_ext.run.RuntimeExtension(
             project, self
